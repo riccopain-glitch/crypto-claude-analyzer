@@ -27,14 +27,14 @@ def get_trending_coins():
         data = response.json()
         coins = []
         for item in data.get('coins', [])[:5]:  # Get top 5
-            coin_info = item['item']
+            coin_info = item.get('item', {})
+            image = coin_info.get('image', '')
             coins.append({
-                'id': coin_info['id'],
-                'name': coin_info['name'],
-                'symbol': coin_info['symbol'].upper(),
-                'image': coin_info['image'],
+                'id': coin_info.get('id', ''),
+                'name': coin_info.get('name', 'Unknown'),
+                'symbol': coin_info.get('symbol', 'N/A').upper(),
+                'image': image if image else 'https://via.placeholder.com/40',
                 'market_cap_rank': coin_info.get('market_cap_rank'),
-                'data': coin_info['data']
             })
         return coins
     except Exception as e:
@@ -48,18 +48,21 @@ def get_coin_details(coin_id):
         response = requests.get(url, timeout=5)
         data = response.json()
         
+        market_data = data.get('market_data', {})
+        sparkline = market_data.get('sparkline_7d', {}).get('price', [])
+        
         return {
-            'name': data.get('name'),
-            'symbol': data.get('symbol', '').upper(),
-            'image': data.get('image', {}).get('large'),
-            'price': data.get('market_data', {}).get('current_price', {}).get('usd', 0),
-            'market_cap': data.get('market_data', {}).get('market_cap', {}).get('usd', 0),
-            'volume_24h': data.get('market_data', {}).get('total_volume', {}).get('usd', 0),
-            'price_change_24h': data.get('market_data', {}).get('price_change_percentage_24h', 0),
-            'price_change_7d': data.get('market_data', {}).get('price_change_percentage_7d', 0),
-            'sparkline': data.get('market_data', {}).get('sparkline_7d', {}).get('price', []),
-            'all_time_high': data.get('market_data', {}).get('ath', {}).get('usd', 0),
-            'all_time_low': data.get('market_data', {}).get('atl', {}).get('usd', 0),
+            'name': data.get('name', 'Unknown'),
+            'symbol': data.get('symbol', 'N/A').upper(),
+            'image': data.get('image', {}).get('large', 'https://via.placeholder.com/40'),
+            'price': market_data.get('current_price', {}).get('usd', 0),
+            'market_cap': market_data.get('market_cap', {}).get('usd', 0),
+            'volume_24h': market_data.get('total_volume', {}).get('usd', 0),
+            'price_change_24h': market_data.get('price_change_percentage_24h', 0),
+            'price_change_7d': market_data.get('price_change_percentage_7d', 0),
+            'sparkline': sparkline,
+            'all_time_high': market_data.get('ath', {}).get('usd', 0),
+            'all_time_low': market_data.get('atl', {}).get('usd', 0),
         }
     except Exception as e:
         print(f"Error fetching coin details for {coin_id}: {e}")
@@ -100,7 +103,9 @@ def update_dashboard():
             coins = get_trending_coins()
             
             for coin in coins:
-                coin_id = coin['id']
+                coin_id = coin.get('id', '')
+                if not coin_id:
+                    continue
                 
                 # Get detailed data
                 details = get_coin_details(coin_id)
