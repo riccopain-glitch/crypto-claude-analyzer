@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 Crypto Analyzer Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            animation: fadeIn 0.8s ease-in;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #00d4ff, #0099ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            color: #b0b0b0;
+            font-size: 1.1em;
+        }
+
+        .status {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 10px 20px;
+            background: rgba(0, 200, 100, 0.2);
+            border: 2px solid #00c864;
+            border-radius: 20px;
+            font-size: 0.9em;
+        }
+
+        .coins-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+
+        .coin-card {
+            background: linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+            border: 2px solid rgba(0, 200, 255, 0.2);
+            border-radius: 15px;
+            padding: 25px;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            animation: slideUp 0.6s ease-out;
+        }
+
+        .coin-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(0, 200, 255, 0.6);
+            box-shadow: 0 10px 30px rgba(0, 200, 255, 0.2);
+        }
+
+        .coin-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            gap: 15px;
+        }
+
+        .coin-image {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .coin-image img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+        }
+
+        .coin-info h2 {
+            font-size: 1.5em;
+            margin-bottom: 5px;
+        }
+
+        .coin-symbol {
+            color: #00d4ff;
+            font-weight: bold;
+        }
+
+        .coin-rank {
+            color: #b0b0b0;
+            font-size: 0.85em;
+        }
+
+        .price-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(0, 200, 255, 0.05);
+            border-radius: 10px;
+        }
+
+        .price {
+            font-size: 2em;
+            font-weight: bold;
+            color: #00ff88;
+            margin-bottom: 10px;
+        }
+
+        .price-change {
+            display: flex;
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        .change-badge {
+            padding: 8px 15px;
+            border-radius: 8px;
+            font-size: 0.9em;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .change-positive {
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+        }
+
+        .change-negative {
+            background: rgba(255, 0, 100, 0.2);
+            color: #ff0064;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 150px;
+            margin: 20px 0;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 20px 0;
+            font-size: 0.85em;
+        }
+
+        .stat {
+            padding: 10px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+        }
+
+        .stat-label {
+            color: #b0b0b0;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            color: #00d4ff;
+            font-weight: bold;
+            word-break: break-word;
+        }
+
+        .analysis-section {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(255, 200, 0, 0.05);
+            border-left: 4px solid #ffc800;
+            border-radius: 8px;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        .analysis-title {
+            color: #ffc800;
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-size: 0.95em;
+        }
+
+        .analysis-text {
+            color: #d0d0d0;
+            font-size: 0.85em;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .loading {
+            color: #ffc800;
+            font-style: italic;
+        }
+
+        .error {
+            color: #ff0064;
+            font-weight: bold;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 200, 255, 0.3);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 200, 255, 0.6);
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 1.8em;
+            }
+
+            .coins-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .price {
+                font-size: 1.5em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚀 Crypto Analyzer</h1>
+            <p class="subtitle">Real-time trending coins with Claude AI analysis</p>
+            <div class="status">
+                <span id="status-indicator">🟢</span> Live Updates
+            </div>
+        </header>
+
+        <div class="coins-grid" id="coins-container">
+            <!-- Coins will be inserted here -->
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        const coinsData = {};
+        const charts = {};
+
+        // Initialize connection
+        socket.on('connect', () => {
+            console.log('Connected to dashboard');
+            document.getElementById('status-indicator').textContent = '🟢';
+        });
+
+        socket.on('disconnect', () => {
+            console.log('Disconnected from dashboard');
+            document.getElementById('status-indicator').textContent = '🔴';
+        });
+
+        // Receive coin updates
+        socket.on('coin_update', (data) => {
+            coinsData[data.id] = data;
+            renderCoin(data);
+        });
+
+        // Receive analysis updates
+        socket.on('analysis_update', (data) => {
+            const analysisEl = document.getElementById(`analysis-${data.coin_id}`);
+            if (analysisEl) {
+                analysisEl.innerHTML = `
+                    <div class="analysis-title">📊 Claude Analysis</div>
+                    <div class="analysis-text">${escapeHtml(data.analysis)}</div>
+                `;
+            }
+        });
+
+        function renderCoin(coin) {
+            let cardEl = document.getElementById(`coin-${coin.id}`);
+            
+            if (!cardEl) {
+                cardEl = document.createElement('div');
+                cardEl.className = 'coin-card';
+                cardEl.id = `coin-${coin.id}`;
+                document.getElementById('coins-container').appendChild(cardEl);
+            }
+
+            const changeColor24 = coin.price_change_24h >= 0 ? 'change-positive' : 'change-negative';
+            const changeColor7d = coin.price_change_7d >= 0 ? 'change-positive' : 'change-negative';
+            const arrow24 = coin.price_change_24h >= 0 ? '📈' : '📉';
+            const arrow7d = coin.price_change_7d >= 0 ? '📈' : '📉';
+
+            const marketCap = coin.market_cap ? `$${formatNumber(coin.market_cap)}` : 'N/A';
+            const volume24h = coin.volume_24h ? `$${formatNumber(coin.volume_24h)}` : 'N/A';
+            const allTimeHigh = coin.all_time_high ? `$${coin.all_time_high.toFixed(4)}` : 'N/A';
+            const allTimeLow = coin.all_time_low ? `$${coin.all_time_low.toFixed(4)}` : 'N/A';
+
+            cardEl.innerHTML = `
+                <div class="coin-header">
+                    <div class="coin-image">
+                        <img src="${coin.image}" alt="${coin.name}" onerror="this.src='https://via.placeholder.com/40'">
+                    </div>
+                    <div class="coin-info">
+                        <h2>${coin.name}</h2>
+                        <div class="coin-symbol">${coin.symbol}</div>
+                        ${coin.market_cap_rank ? `<div class="coin-rank">Rank #${coin.market_cap_rank}</div>` : ''}
+                    </div>
+                </div>
+
+                <div class="price-section">
+                    <div class="price">$${coin.price.toFixed(4)}</div>
+                    <div class="price-change">
+                        <div class="change-badge ${changeColor24}">
+                            ${arrow24} 24h: ${coin.price_change_24h.toFixed(2)}%
+                        </div>
+                        <div class="change-badge ${changeColor7d}">
+                            ${arrow7d} 7d: ${coin.price_change_7d.toFixed(2)}%
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <canvas id="chart-${coin.id}"></canvas>
+                </div>
+
+                <div class="stats">
+                    <div class="stat">
+                        <div class="stat-label">Market Cap</div>
+                        <div class="stat-value">${marketCap}</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-label">24h Volume</div>
+                        <div class="stat-value">${volume24h}</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-label">ATH</div>
+                        <div class="stat-value">${allTimeHigh}</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-label">ATL</div>
+                        <div class="stat-value">${allTimeLow}</div>
+                    </div>
+                </div>
+
+                <div class="analysis-section" id="analysis-${coin.id}">
+                    <div class="loading">⏳ Analyzing with Claude AI...</div>
+                </div>
+            `;
+
+            // Render chart
+            renderChart(coin);
+        }
+
+        function renderChart(coin) {
+            const chartEl = document.getElementById(`chart-${coin.id}`);
+            if (!chartEl) return;
+
+            // Destroy existing chart if it exists
+            if (charts[coin.id]) {
+                charts[coin.id].destroy();
+            }
+
+            const sparkline = coin.sparkline || [];
+            const labels = Array.from({length: sparkline.length}, (_, i) => `${i}d`);
+            const isPositive = coin.price_change_7d >= 0;
+
+            charts[coin.id] = new Chart(chartEl, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: `${coin.symbol} Price (7d)`,
+                        data: sparkline,
+                        borderColor: isPositive ? '#00ff88' : '#ff0064',
+                        backgroundColor: isPositive ? 'rgba(0, 255, 136, 0.1)' : 'rgba(255, 0, 100, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 0,
+                        pointHoverRadius: 5,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            display: false,
+                        },
+                        x: {
+                            display: false,
+                        }
+                    }
+                }
+            });
+        }
+
+        function formatNumber(num) {
+            if (num >= 1e9) return (num / 1e9).toFixed(2) + 'B';
+            if (num >= 1e6) return (num / 1e6).toFixed(2) + 'M';
+            if (num >= 1e3) return (num / 1e3).toFixed(2) + 'K';
+            return num.toFixed(2);
+        }
+
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+    </script>
+</body>
+</html>
