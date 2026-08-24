@@ -1,0 +1,17 @@
+{
+  "bitcoin": {
+    "symbol": "BTC",
+    "buy_price": 40000,
+    "sell_price": 45000
+  },
+  "ethereum": {
+    "symbol": "ETH",
+    "buy_price": 2000,
+    "sell_price": 2500
+  },
+  "solana": {
+    "symbol": "SOL",
+    "buy_price": 100,
+    "sell_price": 150
+  }
+}

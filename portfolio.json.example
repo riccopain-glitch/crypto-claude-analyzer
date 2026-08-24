@@ -1,0 +1,22 @@
+{
+  "bitcoin": {
+    "amount": 0.5,
+    "buy_price": 40000,
+    "current_allocation": 30
+  },
+  "ethereum": {
+    "amount": 5,
+    "buy_price": 2000,
+    "current_allocation": 40
+  },
+  "solana": {
+    "amount": 50,
+    "buy_price": 100,
+    "current_allocation": 20
+  },
+  "cardano": {
+    "amount": 500,
+    "buy_price": 0.5,
+    "current_allocation": 10
+  }
+}
