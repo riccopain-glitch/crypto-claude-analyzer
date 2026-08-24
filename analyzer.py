@@ -106,12 +106,20 @@ Format as a 1-line alert ready to copy-paste to trading chat.
         })
         
         response = self.client.messages.create(
-            model="claude-3-5-sonnet-20241022",
+            model="claude-sonnet-5",
             max_tokens=1024,
             messages=self.conversation_history
         )
         
-        assistant_message = response.content[0].text
+        # Handle thinking blocks and text blocks
+        assistant_message = ""
+        for block in response.content:
+            if hasattr(block, 'text'):
+                assistant_message = block.text
+                break
+        if not assistant_message:
+            assistant_message = "Unable to analyze at this time"
+
         self.conversation_history.append({
             "role": "assistant",
             "content": assistant_message
